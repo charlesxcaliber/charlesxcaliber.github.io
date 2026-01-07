@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Destiny 2 Armor Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse for CSV processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Shared Custom Theme -->
+    <link rel="stylesheet" href="destiny-theme.css">
+    
+    <style>
+        .drag-item {
+            cursor: grab;
+        }
+        .drag-item:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Unified Header -->
+    <header class="app-header">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-900/30 rounded-lg border border-blue-500/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h1 class="text-xl md:text-2xl font-bold text-gradient-header tracking-tight">
+                    Destiny 2 Armor Manager
+                </h1>
+            </div>
+            
+            <!-- Right Side: Standardized Actions/Meta -->
+            <div class="flex items-center gap-4 text-xs md:text-sm text-gray-400">
+                <!-- Hub Link -->
+                <a href="index.html" class="hover:text-white transition-colors flex items-center gap-1 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:text-blue-400 transition-colors"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span class="hidden md:inline">Hub</span>
+                </a>
+
+                <!-- Author Badge -->
+                <span class="hidden md:flex items-center bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700/50">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full mr-2 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
+                    By <span class="text-blue-400 ml-1 font-bold">MrCharles</span>
+                </span>
+
+                <!-- DIM Link -->
+                <a href="https://destinyitemmanager.com/" target="_blank" class="flex items-center hover:text-white transition-colors gap-1">
+                    <span class="hidden sm:inline">Open</span> DIM
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Settings -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <!-- Uniqueness Criteria -->
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        Uniqueness Criteria
+                    </h2>
+                    <p class="text-sm text-gray-400 mb-4">
+                        Items are grouped by checked fields. Unchecking a field prioritizes items based on the lists below.
+                    </p>
+                    <div class="space-y-3">
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" id="check-name" checked disabled class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 opacity-50 cursor-not-allowed">
+                            <span class="text-gray-300 group-hover:text-white transition">Name (Always Required)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" id="check-archetype" checked onchange="updateUIState()" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 focus:ring-blue-500">
+                            <span class="text-gray-300 group-hover:text-white transition">Archetype</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" id="check-tertiary" checked onchange="updateUIState()" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 focus:ring-blue-500">
+                            <span class="text-gray-300 group-hover:text-white transition">Tertiary Stat</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer group">
+                            <input type="checkbox" id="check-tuning" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 focus:ring-blue-500">
+                            <span class="text-gray-300 group-hover:text-white transition">Tuning Stat</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Priority Container -->
+                <div class="glass-panel rounded-xl p-6">
+                    
+                    <!-- Archetype Priority -->
+                    <div id="container-archetype-priority" class="hidden">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2 text-orange-300">
+                            Archetype Priority
+                        </h2>
+                        <ul id="archetype-list" class="space-y-2 pr-1">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Tertiary Priority -->
+                    <div id="container-tertiary-priority" class="hidden">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2 text-teal-300">
+                            Tertiary Stat Priority
+                        </h2>
+                        <ul id="tertiary-list" class="space-y-2 pr-1">
+                             <!-- Populated by JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Tuning Preference -->
+                    <div id="container-tuning-priority">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2 text-purple-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+                            Tuning Priority
+                        </h2>
+                        <ul id="tuning-list" class="space-y-2 pr-1">
+                            <!-- List items generated by JS -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Advanced Rules -->
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-green-300">
+                        Advanced Rules
+                    </h2>
+                    <div class="space-y-4">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-gray-300">Ignore Exotics</span>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" id="toggle-exotics" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/>
+                                <label for="toggle-exotics" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                            </div>
+                        </label>
+
+                        <div class="h-px bg-gray-700 my-2"></div>
+
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-gray-300">Tier 5 Dominance</span>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" id="toggle-tier" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/>
+                                <label for="toggle-tier" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Upload & Process -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <div class="glass-panel rounded-xl p-8 min-h-[500px] flex flex-col items-center justify-center text-center drop-zone" id="drop-zone">
+                    <input type="file" id="file-input" accept=".csv" class="hidden">
+                    
+                    <div id="upload-ui" class="space-y-4">
+                        <div class="bg-gray-800 p-4 rounded-full inline-block mb-2 shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-200">Upload CSV</h3>
+                        <p class="text-gray-400">Drag & drop your <code class="bg-gray-900 px-2 py-1 rounded text-blue-300 border border-gray-700">destiny-armor.csv</code> here</p>
+                        <p class="text-sm text-gray-500">or</p>
+                        <button onclick="document.getElementById('file-input').click()" class="btn-primary px-6 py-3 font-semibold rounded-lg text-lg">
+                            Browse Files
+                        </button>
+                    </div>
+
+                    <!-- New File Ready UI -->
+                    <div id="file-ready-ui" class="hidden space-y-4 w-full max-w-md animate-fade-in">
+                        <div class="bg-blue-900/30 p-4 rounded-full inline-block mb-2 border border-blue-500/30 shadow-lg shadow-blue-900/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white">File Ready</h3>
+                        <p id="filename-display" class="text-blue-200 font-mono text-sm bg-blue-900/40 py-2 px-4 rounded-lg inline-block border border-blue-500/30 shadow-inner">destiny-armor.csv</p>
+                        
+                        <div class="py-2">
+                            <p class="text-gray-400 text-sm">Review your settings on the left, then click Run.</p>
+                        </div>
+
+                        <button onclick="triggerRerun()" class="w-full btn-primary px-6 py-4 font-bold text-lg flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Run Analysis
+                        </button>
+                        <button onclick="resetUI()" class="text-sm text-gray-500 hover:text-gray-300 underline mt-2 transition-colors">Change File</button>
+                    </div>
+
+                    <div id="processing-ui" class="hidden space-y-4 w-full max-w-md">
+                        <div class="flex items-center justify-center gap-3">
+                            <div class="loader"></div>
+                            <span class="text-xl font-semibold animate-pulse text-blue-300">Processing Armor...</span>
+                        </div>
+                        <p class="text-sm text-gray-400">Analyzing perks, stats, and tiers.</p>
+                    </div>
+
+                    <div id="complete-ui" class="hidden space-y-6 w-full max-w-md animate-fade-in">
+                        <div class="bg-green-900/30 p-4 rounded-full inline-block mb-2 border border-green-500/30 shadow-lg shadow-green-900/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white">Processing Complete!</h3>
+                        
+                        <div id="stats-container" class="bg-gray-800 rounded-lg p-4 text-left space-y-2 text-sm transition-colors duration-300 border border-gray-700">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Total Items:</span>
+                                <span id="stat-total" class="font-mono text-white">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Tagged "Keep":</span>
+                                <span id="stat-kept" class="font-mono text-green-400">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Exotics Skipped:</span>
+                                <span id="stat-exotics" class="font-mono text-yellow-400">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Untiered Skipped:</span>
+                                <span id="stat-untiered" class="font-mono text-gray-400">0</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button onclick="triggerRerun(true)" class="w-full btn-secondary px-6 py-3 font-bold text-lg flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                Rerun Logic
+                            </button>
+
+                            <button id="download-btn" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-4 font-bold text-lg rounded-lg shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download Processed CSV
+                            </button>
+                        </div>
+                        
+                        <button onclick="resetUI()" class="text-sm text-gray-500 hover:text-gray-300 underline mt-2 transition-colors">Process Another File</button>
+                    </div>
+
+                    <div id="error-ui" class="hidden space-y-4 w-full max-w-md animate-fade-in">
+                        <div class="bg-red-900/30 p-4 rounded-full inline-block mb-2 border border-red-500/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-red-400">Error</h3>
+                        <p id="error-msg" class="text-gray-300">Something went wrong.</p>
+                        <button onclick="resetUI()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm">Try Again</button>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="p-6 rounded-xl border border-blue-900/30 bg-blue-900/10 text-sm text-blue-200">
+                    <p class="font-semibold mb-2">How logic works:</p>
+                    <ul class="list-disc pl-5 space-y-1 text-blue-300/80">
+                        <li>The tool identifies unique groups based on checked <strong>Uniqueness Criteria</strong>.</li>
+                        <li>If a criterion (e.g., Archetype) is <strong>unchecked</strong>, the tool picks the best one based on your <strong>Priority Lists</strong>.</li>
+                        <li>If <strong>Tier 5 Dominance</strong> is on, any Tier 5 item invalidates all Tier 4 items of the same Name & Archetype.</li>
+                        <li>Finally, if duplicates still exist, it uses the <strong>Tuning Priority</strong> to pick the winner.</li>
+                        <li><strong>Untiered items</strong> (Tier 0 or missing) are ignored entirely and left untouched.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-900/90 border-t border-gray-800 p-6 text-center text-gray-600 text-sm w-full backdrop-blur-md sticky bottom-0 z-50">
+        <p class="mb-2">Destiny 2 Armor Manager &bull; Concept by <span class="text-blue-300">MrCharles</span></p>
+    </footer>
+
+    <script>
+        // --- State ---
+        let tuningPreference = ['super', 'weapons', 'melee', 'grenade', 'class', 'health'];
+        // Strict Archetype list
+        let archetypePreference = ['specialist', 'brawler', 'grenadier', 'bulwark', 'paragon', 'gunner'];
+        // Strict Tertiary list
+        let tertiaryPreference = ['super', 'weapons', 'melee', 'grenade', 'class', 'health'];
+        
+        let globalData = null; // Store parsed data for re-running logic
+        let globalHeaders = null;
+        let processedCSVBlob = null;
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderList('tuning-list', tuningPreference, 'tuning');
+            renderList('archetype-list', archetypePreference, 'archetype');
+            renderList('tertiary-list', tertiaryPreference, 'tertiary');
+            updateUIState(); // Initial UI setup
+            setupDragAndDrop();
+        });
+
+        // --- Dynamic List Rendering ---
+        function renderList(elementId, array, type) {
+            const listEl = document.getElementById(elementId);
+            listEl.innerHTML = '';
+
+            if (array.length === 0) {
+                listEl.innerHTML = `<li class="text-sm text-gray-500 italic text-center p-2">Empty List</li>`;
+                return;
+            }
+
+            array.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = "flex items-center justify-between bg-gray-800 p-2 rounded border border-gray-700 select-none text-sm hover:border-gray-500 transition-colors cursor-default";
+                // Color coding for visual distinction
+                let textColor = "text-gray-300";
+                if(type === 'archetype') textColor = "text-orange-200";
+                if(type === 'tertiary') textColor = "text-teal-200";
+
+                li.innerHTML = `
+                    <span class="capitalize font-medium ${textColor}">${item || '(None)'}</span>
+                    <div class="flex gap-1">
+                        <button onclick="moveItem('${type}', ${index}, -1)" class="p-1 hover:bg-gray-600 rounded text-gray-400 hover:text-white disabled:opacity-30" ${index === 0 ? 'disabled' : ''}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <button onclick="moveItem('${type}', ${index}, 1)" class="p-1 hover:bg-gray-600 rounded text-gray-400 hover:text-white disabled:opacity-30" ${index === array.length - 1 ? 'disabled' : ''}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function moveItem(type, index, direction) {
+            let arr;
+            let elId;
+            
+            if (type === 'tuning') { arr = tuningPreference; elId = 'tuning-list'; }
+            else if (type === 'archetype') { arr = archetypePreference; elId = 'archetype-list'; }
+            else if (type === 'tertiary') { arr = tertiaryPreference; elId = 'tertiary-list'; }
+
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= arr.length) return;
+            
+            // Swap
+            [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+            
+            renderList(elId, arr, type);
+            // NOTE: Removed automatic runLogic() here
+        }
+
+        function updateUIState() {
+            const elName = document.getElementById('check-name');
+            const elArch = document.getElementById('check-archetype');
+            const elTert = document.getElementById('check-tertiary');
+            const elTune = document.getElementById('check-tuning');
+
+            const conArch = document.getElementById('container-archetype-priority');
+            const conTert = document.getElementById('container-tertiary-priority');
+            const conTune = document.getElementById('container-tuning-priority');
+
+            // 1. Handle Checkbox Dependencies (Sequentially more fine)
+            
+            // If Archetype is unchecked, Tertiary must be unchecked and disabled
+            if (!elArch.checked) {
+                elTert.checked = false;
+                elTert.disabled = true;
+                elTert.parentElement.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                elTert.disabled = false;
+                elTert.parentElement.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            // If Tertiary is unchecked (or disabled), Tuning must be unchecked and disabled
+            if (!elTert.checked) {
+                elTune.checked = false;
+                elTune.disabled = true;
+                elTune.parentElement.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                elTune.disabled = false;
+                elTune.parentElement.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            // 2. Handle Priority List Visibility (Only one shown)
+            
+            conArch.classList.add('hidden');
+            conTert.classList.add('hidden');
+            conTune.classList.add('hidden');
+
+            if (!elArch.checked) {
+                conArch.classList.remove('hidden');
+            } else if (!elTert.checked) {
+                conTert.classList.remove('hidden');
+            } else {
+                conTune.classList.remove('hidden');
+            }
+
+            // NOTE: Removed automatic runLogic() here
+        }
+        
+        function triggerRerun(showFeedback = false) {
+            document.getElementById('file-ready-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+            
+            // Small timeout to allow UI update before heavy processing
+            setTimeout(() => {
+                 if (globalData) runLogic(showFeedback);
+            }, 50);
+        }
+
+        // --- File Handling ---
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                // Handled by CSS class in styles.css now
+            });
+            dropZone.addEventListener('dragleave', () => {
+                // Handled by CSS class
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) processFile(e.target.files[0]);
+            });
+        }
+
+        function processFile(file) {
+            if (file.type !== "text/csv" && !file.name.endsWith('.csv')) {
+                showError("Please upload a valid CSV file.");
+                return;
+            }
+
+            // PapaParse steps
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: (h) => h.trim(),
+                complete: (results) => {
+                    try {
+                        globalData = results.data;
+                        globalHeaders = results.meta.fields;
+                        
+                        // NEW FLOW: Do NOT run logic yet. Show Ready UI.
+                        document.getElementById('upload-ui').classList.add('hidden');
+                        document.getElementById('complete-ui').classList.add('hidden');
+                        document.getElementById('processing-ui').classList.add('hidden');
+                        document.getElementById('error-ui').classList.add('hidden');
+                        
+                        document.getElementById('file-ready-ui').classList.remove('hidden');
+                        document.getElementById('filename-display').textContent = file.name;
+                        
+                    } catch (err) {
+                        console.error(err);
+                        showError("Error processing: " + err.message);
+                    }
+                },
+                error: (err) => showError("CSV Parsing Error: " + err.message)
+            });
+        }
+
+        // --- Core Logic ---
+        function runLogic(showFeedback = false) {
+            if (!globalData) return;
+            
+            // Get Config
+            const useArchetype = document.getElementById('check-archetype').checked;
+            const useTertiary = document.getElementById('check-tertiary').checked;
+            const useTuning = document.getElementById('check-tuning').checked;
+            const ignoreExotics = document.getElementById('toggle-exotics').checked;
+            const tier5Dominance = document.getElementById('toggle-tier').checked;
+
+            // Build Rank Maps (Lower index = Better)
+            const tuningMap = {}; tuningPreference.forEach((v, i) => tuningMap[v] = i);
+            const archMap = {}; archetypePreference.forEach((v, i) => archMap[v] = i);
+            const tertMap = {}; tertiaryPreference.forEach((v, i) => tertMap[v] = i);
+
+            // Clone data for processing (don't mutate globalData directly for re-runs)
+            // We need a deep clone of the 'original' row if we want to reset tags clean every time
+            const processingData = globalData.map((row, index) => {
+                const clean = (val) => (val || "").toString().trim().toLowerCase();
+                // Ensure Tag exists
+                if (!row.hasOwnProperty('Tag')) row['Tag'] = '';
+                
+                return {
+                    original: {...row}, // Shallow copy of row object
+                    index: index,
+                    _name: clean(row['Name']),
+                    _archetype: clean(row['Archetype']),
+                    _tertiary: clean(row['Tertiary Stat']),
+                    _tuning: clean(row['Tuning Stat']),
+                    _rarity: clean(row['Rarity']),
+                    _tier: Number(row['Tier']) || 0,
+                    // Pre-calculate ranks
+                    _tuningRank: tuningMap.hasOwnProperty(clean(row['Tuning Stat'])) ? tuningMap[clean(row['Tuning Stat'])] : 999,
+                    _archRank: archMap.hasOwnProperty(clean(row['Archetype'])) ? archMap[clean(row['Archetype'])] : 999,
+                    _tertRank: tertMap.hasOwnProperty(clean(row['Tertiary Stat'])) ? tertMap[clean(row['Tertiary Stat'])] : 999,
+                };
+            });
+
+            let keptCount = 0;
+            let exoticCount = 0;
+            let untieredCount = 0;
+
+            // 1. Filter Non-Exotics, Untiered & Untag
+            let candidates = processingData.filter(item => {
+                // Rule: Ignore Exotics
+                if (ignoreExotics && item._rarity === 'exotic') {
+                    exoticCount++;
+                    return false;
+                }
+                
+                // Rule: Ignore Untiered (Tier 0 or empty)
+                if (item._tier <= 0) {
+                    untieredCount++;
+                    return false;
+                }
+                
+                item.original['Tag'] = ''; // Untag
+                return true;
+            });
+
+            // 2. Tier 5 Dominance
+            if (tier5Dominance) {
+                const groupMaxTier = {};
+                candidates.forEach(item => {
+                    const key = `${item._name}|${item._archetype}`;
+                    if (!groupMaxTier[key] || item._tier > groupMaxTier[key]) {
+                        groupMaxTier[key] = item._tier;
+                    }
+                });
+                candidates = candidates.filter(item => {
+                    const key = `${item._name}|${item._archetype}`;
+                    return !(item._tier === 4 && groupMaxTier[key] === 5);
+                });
+            }
+
+            // 3. Sorting
+            // This is critical. The sort order determines who wins "first" in a duplicate check.
+            // Priority:
+            // 1. Archetype Rank (Only if Archetype is NOT a uniqueness factor, i.e., useArchetype is false)
+            // 2. Tertiary Rank (Only if Tertiary is NOT a uniqueness factor, i.e., useTertiary is false)
+            // 3. Tuning Rank (Always used for final tie-breaking)
+            // 4. Tier (Descending)
+            
+            candidates.sort((a, b) => {
+                // If Archetype is unchecked, we are collapsing all archetypes for a name.
+                // We must prioritize the preferred archetype.
+                if (!useArchetype) {
+                    if (a._archRank !== b._archRank) return a._archRank - b._archRank;
+                }
+
+                // If Tertiary is unchecked, we are collapsing tertiaries.
+                // We must prioritize the preferred tertiary.
+                if (!useTertiary) {
+                    if (a._tertRank !== b._tertRank) return a._tertRank - b._tertRank;
+                }
+
+                // Standard Tuning Priority
+                if (a._tuningRank !== b._tuningRank) return a._tuningRank - b._tuningRank;
+
+                // Tier Priority (High to Low)
+                return b._tier - a._tier;
+            });
+
+            // 4. Identification
+            const seenGroups = new Set();
+
+            candidates.forEach(item => {
+                // Build Group Key based on Checked Boxes
+                let parts = [item._name];
+                if (useArchetype) parts.push(item._archetype);
+                if (useTertiary) parts.push(item._tertiary);
+                if (useTuning) parts.push(item._tuning);
+
+                const groupKey = parts.join('|');
+
+                if (!seenGroups.has(groupKey)) {
+                    seenGroups.add(groupKey);
+                    item.original['Tag'] = 'keep';
+                    keptCount++;
+                }
+            });
+
+            // --- Output Construction ---
+            // Merge results back into a clean array for export
+            const exportData = processingData.map(p => p.original);
+
+            const csv = Papa.unparse(exportData);
+            processedCSVBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+            // UI Update
+            document.getElementById('processing-ui').classList.add('hidden');
+            document.getElementById('complete-ui').classList.remove('hidden');
+            
+            document.getElementById('stat-total').innerText = globalData.length;
+            document.getElementById('stat-kept').innerText = keptCount;
+            document.getElementById('stat-exotics').innerText = exoticCount;
+            document.getElementById('stat-untiered').innerText = untieredCount;
+
+            // Visual Feedback for Rerun
+            if (showFeedback) {
+                const stats = document.getElementById('stats-container');
+                stats.classList.remove('bg-gray-800');
+                stats.classList.add('bg-blue-900');
+                setTimeout(() => {
+                    stats.classList.remove('bg-blue-900');
+                    stats.classList.add('bg-gray-800');
+                }, 300);
+            }
+
+            const btn = document.getElementById('download-btn');
+            btn.onclick = () => {
+                const url = URL.createObjectURL(processedCSVBlob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", "destiny-armor-processed.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+        }
+
+        function showError(msg) {
+            document.getElementById('processing-ui').classList.add('hidden');
+            document.getElementById('error-ui').classList.remove('hidden');
+            document.getElementById('error-msg').innerText = msg;
+        }
+
+        function resetUI() {
+            document.getElementById('complete-ui').classList.add('hidden');
+            document.getElementById('file-ready-ui').classList.add('hidden');
+            document.getElementById('error-ui').classList.add('hidden');
+            document.getElementById('upload-ui').classList.remove('hidden');
+            document.getElementById('file-input').value = '';
+            // Don't reset lists here anymore, as we want to keep user preferences
+            // But we do reset globalData
+            globalData = null;
+            processedCSVBlob = null;
+        }
+
+    </script>
+</body>
+</html>
