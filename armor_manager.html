@@ -501,19 +501,22 @@
                 const clean = (val) => (val || "").toString().trim().toLowerCase();
                 if (!row.hasOwnProperty('Tag')) row['Tag'] = '';
                 
-                // Helper to get stats
-                const getStat = (name) => parseInt(row[name]) || 0;
-                const statsObj = {
-                    'Mobility': getStat('Mobility'),
-                    'Resilience': getStat('Resilience'),
-                    'Recovery': getStat('Recovery'),
-                    'Discipline': getStat('Discipline'),
-                    'Intellect': getStat('Intellect'),
-                    'Strength': getStat('Strength')
+                // Helper to get stats safely, checking standard names AND CSV specific aliases
+                const getStat = (stdName, altName) => {
+                     // Try standard name first, then alt name
+                     let val = parseInt(row[stdName]);
+                     if (isNaN(val)) val = parseInt(row[altName]);
+                     return val || 0;
                 };
 
-                // Find Highest Stat Value
-                const maxStatVal = Math.max(...Object.values(statsObj));
+                const statsObj = {
+                    'Mobility': getStat('Mobility', 'Weapons'),
+                    'Resilience': getStat('Resilience', 'Health'),
+                    'Recovery': getStat('Recovery', 'Class'),
+                    'Discipline': getStat('Discipline', 'Grenade'),
+                    'Intellect': getStat('Intellect', 'Super'),
+                    'Strength': getStat('Strength', 'Melee')
+                };
 
                 // Determine Tuning String
                 const tuneStr = clean(row['Tuning Stat']);
@@ -528,13 +531,8 @@
                 else if (tuneStr === 'super' || tuneStr === 'intellect') mappedStat = 'Intellect';
                 else if (tuneStr === 'grenade' || tuneStr === 'discipline') mappedStat = 'Discipline';
                 else if (tuneStr === 'melee' || tuneStr === 'strength') mappedStat = 'Strength';
-                else if (tuneStr === 'mobility') mappedStat = 'Mobility';
-                else if (tuneStr === 'recovery') mappedStat = 'Recovery';
-                else if (tuneStr === 'class') {
-                     if (classStr === 'titan') mappedStat = 'Resilience';
-                     else if (classStr === 'hunter') mappedStat = 'Mobility';
-                     else if (classStr === 'warlock') mappedStat = 'Recovery';
-                }
+                else if (tuneStr === 'mobility' || tuneStr === 'weapons') mappedStat = 'Mobility';
+                else if (tuneStr === 'recovery' || tuneStr === 'class') mappedStat = 'Recovery';
 
                 if (mappedStat) {
                     const targetValue = statsObj[mappedStat];
@@ -598,25 +596,27 @@
 
             // 3. Sorting
             candidates.sort((a, b) => {
-                // 1. Archetype Rank (if collapsing archetypes)
+                // 1. Archetype Rank (Always Checked First if "useArchetype" is unchecked)
+                // If the user wants to collapse all archetypes into one winner, we MUST pick the preferred archetype FIRST.
                 if (!useArchetype) {
                     if (a._archRank !== b._archRank) return a._archRank - b._archRank;
                 }
 
-                // 2. Tertiary Rank (if collapsing tertiaries)
+                // 2. Synergy Preference
+                // NOW we check synergy. We are either comparing items of the SAME archetype (due to step 1)
+                // OR we are comparing items where Archetype didn't matter/was equal.
+                if (!useTuning && preferSynergy) {
+                    if (a._synergyScore !== b._synergyScore) {
+                        return b._synergyScore - a._synergyScore; // Higher score first
+                    }
+                }
+
+                // 3. Tertiary Rank (if collapsing tertiaries)
                 if (!useTertiary) {
                     if (a._tertRank !== b._tertRank) return a._tertRank - b._tertRank;
                 }
 
-                // 3. Synergy Preference (if enabled and NOT strictly splitting by Tuning)
-                // If we are collapsing tunings (useTuning = false), we prioritize synergy first.
-                if (!useTuning && preferSynergy) {
-                    if (a._synergyScore !== b._synergyScore) {
-                        return b._synergyScore - a._synergyScore; // Higher score first (3 > 2 > 1 > 0)
-                    }
-                }
-
-                // 4. Tuning Rank
+                // 4. Tuning Rank (Final tie breaker for tuning)
                 if (a._tuningRank !== b._tuningRank) return a._tuningRank - b._tuningRank;
 
                 // 5. Tier Priority (High to Low)
